@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#e85d04">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ganesh Hisab">
+<title>श्री विघ्नहर्ता गणेश उत्सव समिति — हिसाब</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#fff8f0;color:#34200f;font-family:Arial,sans-serif}
+header{background:linear-gradient(135deg,#ff8a00,#d62828);color:#fff;text-align:center;padding:22px 16px;border-radius:0 0 25px 25px}
+header h1{font-size:24px;margin:0 0 6px}header p{margin:0;font-size:14px}
+main{max-width:650px;margin:auto;padding:15px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.tab{background:#fff;border:2px solid #eee;color:#6b3d18;font-weight:bold;padding:13px;border-radius:14px}.tab.active{background:#ff7a00;color:#fff;border-color:#ff7a00}
+.card{background:#fff;border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 3px 14px #00000012}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#fff3e0;border-radius:14px;padding:12px;text-align:center}.stat span{font-size:12px}.stat b{display:block;font-size:19px;margin-top:5px}
+h2,h3{margin:4px 0 14px}.row{display:flex;gap:9px;margin-bottom:9px}.row>*{flex:1}
+input,button{width:100%;padding:12px;border:1px solid #ddd;border-radius:11px;font-size:16px}
+button{border:0;background:#ff7a00;color:#fff;font-weight:bold;cursor:pointer}.green{background:#2e7d32}.red{background:#d32f2f}.gray{background:#795548}
+.entry{border-bottom:1px solid #eee;padding:12px 0;display:flex;justify-content:space-between;gap:8px}.entry:last-child{border-bottom:0}.amount{font-weight:bold;white-space:nowrap}.small{font-size:12px;color:#777}
+.actions{display:flex;gap:5px;margin-top:7px}.actions button{width:auto;padding:7px 9px;font-size:13px}
+.hidden{display:none}.empty{color:#777;text-align:center;padding:15px}
+.notice{font-size:12px;color:#666;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+<h1>🕉️ श्री विघ्नहर्ता गणेश उत्सव समिति, साजा</h1>
+<p>चंदा एवं खर्चा हिसाब</p>
+</header>
+<main><button id="installBtn" onclick="installApp()" style="display:none;margin-bottom:12px">📲 Home Screen पर App Install करें</button>
+<div class="tabs">
+<button class="tab active" id="tabChanda" onclick="showTab('chanda')">🟢 चंदा</button>
+<button class="tab" id="tabKharcha" onclick="showTab('kharcha')">🔴 खर्चा</button>
+</div>
+
+<div class="card stats">
+<div class="stat"><span>कुल चंदा</span><b id="totalChanda">₹0</b></div>
+<div class="stat"><span>कुल खर्चा</span><b id="totalKharcha">₹0</b></div>
+<div class="stat"><span>बाकी राशि</span><b id="balance">₹0</b></div>
+</div>
+
+<section id="chandaSection">
+<div class="card">
+<h3>➕ चंदा जोड़ें</h3>
+<div class="row"><input id="cName" placeholder="नाम / दुकान"><input id="cPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="मोबाइल नंबर"></div>
+<div class="row"><input id="cAmount" type="number" min="0" placeholder="चंदा राशि ₹"><input id="cNote" placeholder="विवरण (वैकल्पिक)"></div>
+<button onclick="addChanda()">चंदा सेव करें</button>
+<p class="notice">मोबाइल नंबर देने पर सेव की गई चंदा एंट्री से एक व्यवस्थित धन्यवाद SMS तैयार किया जा सकेगा।</p>
+</div>
+<div class="card"><h3>📋 चंदा सूची</h3><div id="chandaList"></div></div>
+</section>
+
+<section id="kharchaSection" class="hidden">
+<div class="card">
+<h3>➕ खर्चा जोड़ें</h3>
+<div class="row"><input id="kName" placeholder="खर्च का नाम / विवरण"><input id="kAmount" type="number" min="0" placeholder="राशि ₹"></div>
+<button class="red" onclick="addKharcha()">खर्चा सेव करें</button>
+</div>
+<div class="card"><h3>📋 खर्चा सूची</h3><div id="kharchaList"></div></div>
+</section>
+
+<div class="card">
+<button class="gray" onclick="clearAll()">⚠️ सारा हिसाब साफ करें</button>
+</div>
+</main>
+
+<script>
+let chanda=JSON.parse(localStorage.getItem('g_chanda')||'[]');
+let kharcha=JSON.parse(localStorage.getItem('g_kharcha')||'[]');
+
+function money(n){return '₹'+Number(n).toLocaleString('en-IN')}
+function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function save(){localStorage.setItem('g_chanda',JSON.stringify(chanda));localStorage.setItem('g_kharcha',JSON.stringify(kharcha));render()}
+
+function addChanda(){
+ let name=document.getElementById('cName').value.trim();
+ let phone=document.getElementById('cPhone').value.replace(/\D/g,'');
+ let amount=Number(document.getElementById('cAmount').value);
+ let note=document.getElementById('cNote').value.trim();
+ if(!name){alert('कृपया नाम डालें');return}
+ if(!amount||amount<0){alert('कृपया सही राशि डालें');return}
+ if(phone && phone.length!==10){alert('मोबाइल नंबर 10 अंकों का होना चाहिए');return}
+ chanda.unshift({id:Date.now(),name,phone,amount,note,date:new Date().toLocaleDateString('hi-IN')});
+ document.getElementById('cName').value='';document.getElementById('cPhone').value='';document.getElementById('cAmount').value='';document.getElementById('cNote').value='';
+ save();
+}
+
+function addKharcha(){
+ let name=document.getElementById('kName').value.trim();
+ let amount=Number(document.getElementById('kAmount').value);
+ if(!name){alert('कृपया खर्च का विवरण डालें');return}
+ if(!amount||amount<0){alert('कृपया सही राशि डालें');return}
+ kharcha.unshift({id:Date.now(),name,amount,date:new Date().toLocaleDateString('hi-IN')});
+ document.getElementById('kName').value='';document.getElementById('kAmount').value='';
+ save();
+}
+
+function delChanda(id){chanda=chanda.filter(x=>x.id!==id);save()}
+function delKharcha(id){kharcha=kharcha.filter(x=>x.id!==id);save()}
+
+function thanksSMS(x){
+ if(!x.phone){alert('इस चंदा एंट्री में मोबाइल नंबर सेव नहीं है।');return}
+ const msg=`🙏 श्री विघ्नहर्ता गणेश उत्सव समिति, साजा 🙏
+
+━━━━━━━━━━━━━━━━
+      सहयोग राशि प्राप्ति
+━━━━━━━━━━━━━━━━
+
+👤 नाम: ${x.name}
+💰 सहयोग राशि: ₹${Number(x.amount).toLocaleString('en-IN')}
+📅 दिनांक: ${x.date}
+
+आपके सहयोग एवं योगदान के लिए हार्दिक धन्यवाद। 🌺
+
+आप सपरिवार पधारकर भगवान श्री गणेश जी का आशीर्वाद प्राप्त करें। 🕉️🙏
+
+📍 स्थान: राम मंदिर के सामने, वार्ड नं. 08, साजा
+
+सादर,
+श्री विघ्नहर्ता गणेश उत्सव समिति, साजा`;
+ window.location.href='sms:'+x.phone+'?body='+encodeURIComponent(msg);
+}
+
+function render(){
+ let tc=chanda.reduce((a,x)=>a+Number(x.amount),0), tk=kharcha.reduce((a,x)=>a+Number(x.amount),0);
+ document.getElementById('totalChanda').textContent=money(tc);
+ document.getElementById('totalKharcha').textContent=money(tk);
+ document.getElementById('balance').textContent=money(tc-tk);
+
+ document.getElementById('chandaList').innerHTML=chanda.length?chanda.map(x=>`
+ <div class="entry"><div><b>${esc(x.name)}</b><div class="small">${esc(x.phone||'मोबाइल नंबर नहीं')} • ${x.date}</div><div class="small">${esc(x.note)}</div></div>
+ <div style="text-align:right"><div class="amount">+${money(x.amount)}</div><div class="actions">${x.phone?`<button class="green" onclick="thanksSMS(chanda.find(e=>e.id===${x.id}))">📩 SMS</button>`:''}<button class="red" onclick="delChanda(${x.id})">हटाएँ</button></div></div></div>`).join(''):'<div class="empty">अभी कोई चंदा एंट्री नहीं है।</div>';
+
+ document.getElementById('kharchaList').innerHTML=kharcha.length?kharcha.map(x=>`
+ <div class="entry"><div><b>${esc(x.name)}</b><div class="small">${x.date}</div></div>
+ <div style="text-align:right"><div class="amount">-${money(x.amount)}</div><div class="actions"><button class="red" onclick="delKharcha(${x.id})">हटाएँ</button></div></div></div>`).join(''):'<div class="empty">अभी कोई खर्चा एंट्री नहीं है।</div>';
+}
+function showTab(t){
+ const c=t==='chanda';document.getElementById('chandaSection').classList.toggle('hidden',!c);document.getElementById('kharchaSection').classList.toggle('hidden',c);
+ document.getElementById('tabChanda').classList.toggle('active',c);document.getElementById('tabKharcha').classList.toggle('active',!c);
+}
+function clearAll(){
+ if(confirm('क्या पूरा चंदा और खर्चा हिसाब साफ करना है?')){
+  chanda=[];kharcha=[];save();
+ }
+}
+render();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  const b=document.getElementById('installBtn');
+  if(b) b.style.display='block';
+});
+function installApp(){
+  if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt=null; }
+}
+</script>
+</body>
+</html>

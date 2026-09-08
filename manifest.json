@@ -1,0 +1,10 @@
+{
+  "name": "श्री विघ्नहर्ता गणेश उत्सव समिति - हिसाब",
+  "short_name": "Ganesh Hisab",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fff8f0",
+  "theme_color": "#e85d04",
+  "description": "चंदा और खर्चा हिसाब ऐप",
+  "icons": []
+}
